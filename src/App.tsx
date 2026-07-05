@@ -11,7 +11,7 @@ import {
 
 import { saveExam, getAllExams } from './utils/storage';
 
-// ✅ اصلاح مهم: استفاده از export واحد
+// ✅ FIX: export واحد (حل مشکل build)
 import { exportPDF, exportWord } from './utils/export';
 
 import HeaderForm from './components/HeaderForm';
@@ -19,19 +19,19 @@ import QuestionSection from './components/QuestionSection';
 import ExamList from './components/ExamList';
 
 import {
-  Download,
   Save,
   List,
   PlusCircle,
   Printer,
-  BookOpen,
-  AlertCircle,
-  CheckCircle2,
+  Download,
   Trash2,
-  Menu,
-  X
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 
+/* =========================
+   QUESTION TYPES UI
+========================= */
 const QUESTION_TYPES: {
   type: QuestionType;
   icon: string;
@@ -68,7 +68,6 @@ const App: React.FC = () => {
   const [savedExams, setSavedExams] = useState<ExamData[]>([]);
   const [notification, setNotification] =
     useState<{ msg: string; type: 'success' | 'error' } | null>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setSavedExams(getAllExams());
@@ -90,13 +89,16 @@ const App: React.FC = () => {
     updatedAt: new Date().toISOString(),
   });
 
+  /* =========================
+     QUESTION HANDLERS
+  ========================= */
   const handleAddQuestion = (question: Question) => {
     setQuestions(prev => [...prev, question]);
   };
 
   const handleUpdateQuestion = (updated: Question) => {
     setQuestions(prev =>
-      prev.map(q => (q.id === updated.id ? updated : q))
+      prev.map(q => q.id === updated.id ? updated : q)
     );
   };
 
@@ -104,21 +106,26 @@ const App: React.FC = () => {
     setQuestions(prev => prev.filter(q => q.id !== id));
   };
 
+  /* =========================
+     SAVE
+  ========================= */
   const handleSave = () => {
     if (questions.length === 0) {
-      showNotification('حداقل یک سوال اضافه کنید.', 'error');
+      showNotification('حداقل یک سوال اضافه کنید', 'error');
       return;
     }
-    const exam = getExamData();
-    saveExam(exam);
+
+    saveExam(getExamData());
     setSavedExams(getAllExams());
     showNotification('آزمون ذخیره شد ✅');
   };
 
-  // ✅ PDF واقعی
+  /* =========================
+     PDF EXPORT (FIXED)
+  ========================= */
   const handlePrint = async () => {
     if (questions.length === 0) {
-      showNotification('ابتدا سوال اضافه کنید.', 'error');
+      showNotification('سوالی وجود ندارد', 'error');
       return;
     }
 
@@ -126,14 +133,17 @@ const App: React.FC = () => {
       await exportPDF(getExamData());
       showNotification('PDF ساخته شد ✅');
     } catch (e) {
-      showNotification('خطا در تولید PDF', 'error');
+      console.error(e);
+      showNotification('خطا در PDF', 'error');
     }
   };
 
-  // ✅ Word واقعی
+  /* =========================
+     WORD EXPORT (FIXED)
+  ========================= */
   const handleDownloadWord = async () => {
     if (questions.length === 0) {
-      showNotification('ابتدا سوال اضافه کنید.', 'error');
+      showNotification('سوالی وجود ندارد', 'error');
       return;
     }
 
@@ -141,13 +151,16 @@ const App: React.FC = () => {
       await exportWord(getExamData());
       showNotification('Word ساخته شد ✅');
     } catch (e) {
-      showNotification('خطا در تولید Word', 'error');
+      console.error(e);
+      showNotification('خطا در Word', 'error');
     }
   };
 
+  /* =========================
+     NEW EXAM
+  ========================= */
   const handleNewExam = () => {
-    if (questions.length > 0 &&
-      !confirm('آیا مطمئن هستید؟ آزمون پاک می‌شود.')) return;
+    if (questions.length > 0 && !confirm('آیا مطمئن هستید؟')) return;
 
     setHeader(defaultHeader);
     setQuestions([]);
@@ -161,6 +174,9 @@ const App: React.FC = () => {
     setActiveTab('designer');
   };
 
+  /* =========================
+     UI
+  ========================= */
   const questionsByType = Object.fromEntries(
     QUESTION_TYPES.map(qt => [
       qt.type,
@@ -171,9 +187,9 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50" dir="rtl">
 
-      {/* Notification */}
+      {/* NOTIFICATION */}
       {notification && (
-        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl text-white ${
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl text-white ${
           notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'
         }`}>
           {notification.msg}
@@ -208,35 +224,4 @@ const App: React.FC = () => {
             ))}
 
             {/* ACTIONS */}
-            <div className="fixed bottom-4 left-0 right-0 flex justify-center gap-3">
-              <button onClick={handleSave} className="bg-green-600 text-white px-4 py-2 rounded">
-                ذخیره
-              </button>
-
-              <button onClick={handlePrint} className="bg-red-600 text-white px-4 py-2 rounded">
-                PDF
-              </button>
-
-              <button onClick={handleDownloadWord} className="bg-blue-600 text-white px-4 py-2 rounded">
-                Word
-              </button>
-
-              <button onClick={handleNewExam} className="bg-gray-600 text-white px-4 py-2 rounded">
-                جدید
-              </button>
-            </div>
-          </>
-        ) : (
-          <ExamList
-            exams={savedExams}
-            onEdit={handleEditExam}
-            onRefresh={() => setSavedExams(getAllExams())}
-          />
-        )}
-
-      </main>
-    </div>
-  );
-};
-
-export default App;
+            <div className="fixed bottom-4 left-0 right-0 flex justify
