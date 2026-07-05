@@ -1,53 +1,45 @@
-import React, { useState, useEffect } from "react";
-import { v4 as uuidv4 } from "uuid";
+import React, { useEffect, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 
 import {
   Question,
   QuestionType,
   HeaderInfo,
-  ExamData,
-} from "./types";
+  ExamData
+} from './types';
 
-import { saveExam, getAllExams } from "./utils/storage";
-import { exportPDF, exportWord } from "./utils/export";
+import { saveExam, getAllExams } from './utils/storage';
+import { exportPDF, exportWord } from './utils/export';
 
-import HeaderForm from "./components/HeaderForm";
-import QuestionSection from "./components/QuestionSection";
-import ExamList from "./components/ExamList";
-
-const QUESTION_TYPES: { type: QuestionType; icon: string; bgColor: string; borderColor: string }[] = [
-  { type: "true-false", icon: "✓✗", bgColor: "bg-green-50", borderColor: "border-green-200" },
-  { type: "fill-blank", icon: "📝", bgColor: "bg-blue-50", borderColor: "border-blue-200" },
-  { type: "matching", icon: "↔️", bgColor: "bg-purple-50", borderColor: "border-purple-200" },
-  { type: "multiple-choice", icon: "⊙", bgColor: "bg-orange-50", borderColor: "border-orange-200" },
-  { type: "short-answer", icon: "✏️", bgColor: "bg-yellow-50", borderColor: "border-yellow-200" },
-  { type: "descriptive", icon: "📄", bgColor: "bg-red-50", borderColor: "border-red-200" },
-];
+import HeaderForm from './components/HeaderForm';
+import QuestionSection from './components/QuestionSection';
+import ExamList from './components/ExamList';
 
 const defaultHeader: HeaderInfo = {
-  schoolName: "",
-  studentName: "",
-  fatherName: "",
-  subject: "",
-  grade: "",
-  academicYear: "",
-  date: "",
-  teacherName: "",
-  examTitle: "",
+  schoolName: '',
+  studentName: '',
+  fatherName: '',
+  subject: '',
+  grade: '',
+  academicYear: '',
+  date: '',
+  teacherName: '',
+  examTitle: '',
 };
 
-type Tab = "designer" | "saved";
+type Tab = 'designer' | 'saved';
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>("designer");
+const App: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<Tab>('designer');
   const [header, setHeader] = useState<HeaderInfo>(defaultHeader);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [examId, setExamId] = useState(uuidv4());
   const [savedExams, setSavedExams] = useState<ExamData[]>([]);
+  const [notification, setNotification] = useState<string | null>(null);
 
   useEffect(() => {
-    setSavedExams(getAllExams());
     console.log("APP LOADED");
+    setSavedExams(getAllExams());
   }, []);
 
   const totalScore = questions.reduce((sum, q) => sum + q.score, 0);
@@ -62,41 +54,73 @@ export default function App() {
   });
 
   const handleSave = () => {
+    if (!questions.length) return alert('سوالی وجود ندارد');
+
     saveExam(getExamData());
     setSavedExams(getAllExams());
+    alert('ذخیره شد');
   };
 
-  const handlePDF = () => exportPDF(getExamData() as any);
-  const handleWord = () => exportWord(getExamData());
+  const handlePDF = async () => {
+    try {
+      await exportPDF(getExamData());
+      alert('PDF ساخته شد');
+    } catch (e) {
+      console.log(e);
+      alert('خطا در PDF');
+    }
+  };
+
+  const handleWord = async () => {
+    try {
+      await exportWord(getExamData());
+      alert('Word ساخته شد');
+    } catch (e) {
+      console.log(e);
+      alert('خطا در Word');
+    }
+  };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100" dir="rtl">
 
-      <HeaderForm header={header} onChange={setHeader} />
+      <header className="bg-blue-800 text-white p-3">
+        <h1>طراح سوالات</h1>
+      </header>
 
-      {QUESTION_TYPES.map((qt) => (
-        <QuestionSection
-          key={qt.type}
-          type={qt.type}
-          questions={questions.filter(q => q.type === qt.type)}
-          allQuestionsCount={questions.length}
-          startIndex={1}
-          onAdd={(q) => setQuestions([...questions, q])}
-          onUpdate={() => {}}
-          onDelete={(id) => setQuestions(questions.filter(q => q.id !== id))}
-          icon={qt.icon}
-          bgColor={qt.bgColor}
-          borderColor={qt.borderColor}
-        />
-      ))}
+      <main className="p-3">
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white p-3 flex gap-2 justify-center">
-        <button onClick={handleSave}>ذخیره</button>
-        <button onClick={handlePDF}>PDF</button>
-        <button onClick={handleWord}>Word</button>
-      </div>
+        {activeTab === 'designer' ? (
+          <>
+            <HeaderForm header={header} onChange={setHeader} />
 
-      <ExamList exams={savedExams} onEdit={() => {}} />
+            <QuestionSection
+              type={'multiple-choice'}
+              questions={questions}
+              allQuestionsCount={questions.length}
+              startIndex={1}
+              onAdd={(q) => setQuestions([...questions, q])}
+              onUpdate={(q) =>
+                setQuestions(prev => prev.map(p => p.id === q.id ? q : p))
+              }
+              onDelete={(id) =>
+                setQuestions(prev => prev.filter(p => p.id !== id))
+              }
+            />
+
+            <div className="flex gap-2 fixed bottom-3 left-0 right-0 justify-center">
+              <button onClick={handleSave}>ذخیره</button>
+              <button onClick={handlePDF}>PDF</button>
+              <button onClick={handleWord}>Word</button>
+            </div>
+          </>
+        ) : (
+          <ExamList exams={savedExams} />
+        )}
+
+      </main>
     </div>
   );
-}
+};
+
+export default App;
