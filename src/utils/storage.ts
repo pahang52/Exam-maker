@@ -1,48 +1,87 @@
+import { Preferences } from '@capacitor/preferences';
 import { ExamData } from '../types';
 
 const STORAGE_KEY = 'exam_designer_exams';
 
-export const saveExam = (exam: ExamData): void => {
-  const exams = getAllExams();
-  const existingIndex = exams.findIndex(e => e.id === exam.id);
-  if (existingIndex >= 0) {
-    exams[existingIndex] = { ...exam, updatedAt: new Date().toISOString() };
+/* =========================
+   SAVE
+========================= */
+export const saveExam = async (exam: ExamData): Promise<void> => {
+  const exams = await getAllExams();
+
+  const index = exams.findIndex(e => e.id === exam.id);
+
+  const now = new Date().toISOString();
+
+  if (index >= 0) {
+    exams[index] = { ...exam, updatedAt: now };
   } else {
-    exams.push({ ...exam, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    exams.push({ ...exam, createdAt: now, updatedAt: now });
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(exams));
+
+  await Preferences.set({
+    key: STORAGE_KEY,
+    value: JSON.stringify(exams),
+  });
 };
 
-export const getAllExams = (): ExamData[] => {
+/* =========================
+   GET ALL
+========================= */
+export const getAllExams = async (): Promise<ExamData[]> => {
   try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch {
+    const { value } = await Preferences.get({ key: STORAGE_KEY });
+    return value ? JSON.parse(value) : [];
+  } catch (e) {
+    console.log('storage error', e);
     return [];
   }
 };
 
-export const getExamById = (id: string): ExamData | null => {
-  const exams = getAllExams();
+/* =========================
+   GET BY ID
+========================= */
+export const getExamById = async (id: string): Promise<ExamData | null> => {
+  const exams = await getAllExams();
   return exams.find(e => e.id === id) || null;
 };
 
-export const deleteExam = (id: string): void => {
-  const exams = getAllExams().filter(e => e.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(exams));
+/* =========================
+   DELETE
+========================= */
+export const deleteExam = async (id: string): Promise<void> => {
+  const exams = await getAllExams();
+  const filtered = exams.filter(e => e.id !== id);
+
+  await Preferences.set({
+    key: STORAGE_KEY,
+    value: JSON.stringify(filtered),
+  });
 };
 
-export const exportAllExams = (): string => {
-  return JSON.stringify(getAllExams(), null, 2);
+/* =========================
+   EXPORT
+========================= */
+export const exportAllExams = async (): Promise<string> => {
+  const exams = await getAllExams();
+  return JSON.stringify(exams, null, 2);
 };
 
-export const importExams = (jsonData: string): boolean => {
+/* =========================
+   IMPORT
+========================= */
+export const importExams = async (jsonData: string): Promise<boolean> => {
   try {
     const data = JSON.parse(jsonData);
+
     if (Array.isArray(data)) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      await Preferences.set({
+        key: STORAGE_KEY,
+        value: JSON.stringify(data),
+      });
       return true;
     }
+
     return false;
   } catch {
     return false;
