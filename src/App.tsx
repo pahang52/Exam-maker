@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   Question,
   HeaderInfo,
-  ExamData
+  ExamData,
 } from './types';
 
 import { saveExam, getAllExams } from './utils/storage';
@@ -37,7 +37,6 @@ const App: React.FC = () => {
   const [notification, setNotification] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('APP LOADED');
     setSavedExams(getAllExams());
   }, []);
 
@@ -98,21 +97,12 @@ const App: React.FC = () => {
 
   return (
     <div style={{ direction: 'rtl', padding: 16 }}>
-      <HeaderForm
-        header={header}
-        onChange={setHeader}
-      />
+      <HeaderForm header={header} onChange={setHeader} />
 
-      <div style={{ display: 'flex', gap: 8, margin: '16px 0' }}>
-        <button onClick={() => setActiveTab('designer')}>
-          طراحی
-        </button>
-        <button onClick={() => setActiveTab('saved')}>
-          ذخیره‌شده‌ها
-        </button>
-        <button onClick={handleNewExam}>
-          آزمون جدید
-        </button>
+      <div style={{ display: 'flex', gap: 8, margin: '16px 0', flexWrap: 'wrap' }}>
+        <button type="button" onClick={() => setActiveTab('designer')}>طراحی</button>
+        <button type="button" onClick={() => setActiveTab('saved')}>ذخیره‌شده‌ها</button>
+        <button type="button" onClick={handleNewExam}>آزمون جدید</button>
       </div>
 
       {notification && (
@@ -124,20 +114,22 @@ const App: React.FC = () => {
       {activeTab === 'designer' ? (
         <>
           <QuestionSection
-            questions={questions}
-            onAddQuestion={(q: Question) => setQuestions(prev => [...prev, q])}
-            onUpdate={(q: Question) =>
-              setQuestions(prev => prev.map(p => (p.id === q.id ? q : p)))
-            }
-            onDelete={(id: string) =>
-              setQuestions(prev => prev.filter(p => p.id !== id))
-            }
+            type="true-false"
+            questions={questions.filter(q => q.type === 'true-false')}
+            allQuestionsCount={questions.length}
+            startIndex={1}
+            onAdd={(q) => setQuestions(prev => [...prev, q])}
+            onUpdate={(q) => setQuestions(prev => prev.map(p => (p.id === q.id ? q : p)))}
+            onDelete={(id) => setQuestions(prev => prev.filter(p => p.id !== id))}
+            icon="✓✗"
+            bgColor="bg-green-50"
+            borderColor="border-green-200"
           />
 
-          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button onClick={handleSave}>ذخیره</button>
-            <button onClick={handlePDF}>PDF</button>
-            <button onClick={handleWord}>Word</button>
+          <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+            <button type="button" onClick={handleSave}>ذخیره</button>
+            <button type="button" onClick={handlePDF}>PDF</button>
+            <button type="button" onClick={handleWord}>Word</button>
           </div>
 
           <div style={{ marginTop: 16 }}>
@@ -147,7 +139,7 @@ const App: React.FC = () => {
       ) : (
         <ExamList
           exams={savedExams}
-          onSelect={(exam: ExamData) => {
+          onSelect={(exam) => {
             setExamId(exam.id);
             setHeader(exam.header);
             setQuestions(exam.questions);
