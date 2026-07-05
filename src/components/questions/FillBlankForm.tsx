@@ -13,19 +13,25 @@ interface FillBlankFormProps {
 }
 
 const FillBlankForm: React.FC<FillBlankFormProps> = ({
-  onAdd, editingQuestion, onUpdate, onCancel, questionCount
+  onAdd,
+  editingQuestion,
+  onUpdate,
+  onCancel,
+  questionCount,
 }) => {
   const [text, setText] = useState(editingQuestion?.text || '');
   const [blanks, setBlanks] = useState<string[]>(editingQuestion?.blanks || ['']);
-  const [score, setScore] = useState(editingQuestion?.score || 1);
+  const [score, setScore] = useState(editingQuestion?.score ?? 1);
   const [error, setError] = useState('');
 
-  const addBlank = () => setBlanks([...blanks, '']);
-  const removeBlank = (i: number) => setBlanks(blanks.filter((_, idx) => idx !== i));
+  const addBlank = () => setBlanks(prev => [...prev, '']);
+  const removeBlank = (i: number) => setBlanks(prev => prev.filter((_, idx) => idx !== i));
   const updateBlank = (i: number, value: string) => {
-    const newBlanks = [...blanks];
-    newBlanks[i] = value;
-    setBlanks(newBlanks);
+    setBlanks(prev => {
+      const next = [...prev];
+      next[i] = value;
+      return next;
+    });
   };
 
   const insertBlankToText = () => {
@@ -37,23 +43,26 @@ const FillBlankForm: React.FC<FillBlankFormProps> = ({
       setError('متن سوال را وارد کنید. از ___ برای جاخالی استفاده کنید.');
       return;
     }
+
     setError('');
 
     if (editingQuestion && onUpdate) {
       onUpdate({ ...editingQuestion, text: text.trim(), blanks, score });
-    } else {
-      onAdd({
-        id: uuidv4(),
-        type: 'fill-blank',
-        text: text.trim(),
-        blanks,
-        score,
-        order: questionCount + 1,
-      });
-      setText('');
-      setBlanks(['']);
-      setScore(1);
+      return;
     }
+
+    onAdd({
+      id: uuidv4(),
+      type: 'fill-blank',
+      text: text.trim(),
+      blanks,
+      score,
+      order: questionCount + 1,
+    });
+
+    setText('');
+    setBlanks(['']);
+    setScore(1);
   };
 
   return (
@@ -68,7 +77,10 @@ const FillBlankForm: React.FC<FillBlankFormProps> = ({
         <div className="relative">
           <textarea
             value={text}
-            onChange={e => { setText(e.target.value); setError(''); }}
+            onChange={e => {
+              setText(e.target.value);
+              setError('');
+            }}
             placeholder="مثال: کشور ایران در قاره ___ واقع شده و پایتخت آن ___ است."
             rows={3}
             className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 resize-none text-right"
@@ -96,6 +108,7 @@ const FillBlankForm: React.FC<FillBlankFormProps> = ({
             <Plus size={14} /> افزودن پاسخ
           </button>
         </div>
+
         <div className="space-y-2">
           {blanks.map((blank, i) => (
             <div key={i} className="flex gap-2 items-center">
@@ -113,7 +126,9 @@ const FillBlankForm: React.FC<FillBlankFormProps> = ({
                   type="button"
                   onClick={() => removeBlank(i)}
                   className="text-red-400 hover:text-red-600 text-sm px-2"
-                >✕</button>
+                >
+                  ✕
+                </button>
               )}
             </div>
           ))}
@@ -127,12 +142,14 @@ const FillBlankForm: React.FC<FillBlankFormProps> = ({
           {editingQuestion ? (
             <>
               <button
+                type="button"
                 onClick={handleSubmit}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all"
               >
                 ✓ ذخیره
               </button>
               <button
+                type="button"
                 onClick={onCancel}
                 className="px-5 py-2.5 border-2 border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50"
               >
@@ -141,6 +158,7 @@ const FillBlankForm: React.FC<FillBlankFormProps> = ({
             </>
           ) : (
             <button
+              type="button"
               onClick={handleSubmit}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-md"
             >
