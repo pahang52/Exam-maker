@@ -13,7 +13,11 @@ interface MultipleChoiceFormProps {
 }
 
 const MultipleChoiceForm: React.FC<MultipleChoiceFormProps> = ({
-  onAdd, editingQuestion, onUpdate, onCancel, questionCount
+  onAdd,
+  editingQuestion,
+  onUpdate,
+  onCancel,
+  questionCount,
 }) => {
   const [text, setText] = useState(editingQuestion?.text || '');
   const [options, setOptions] = useState<MultipleChoiceOption[]>(
@@ -24,33 +28,41 @@ const MultipleChoiceForm: React.FC<MultipleChoiceFormProps> = ({
       { id: uuidv4(), text: '', isCorrect: false },
     ]
   );
-  const [score, setScore] = useState(editingQuestion?.score || 1);
+  const [score, setScore] = useState(editingQuestion?.score ?? 1);
   const [error, setError] = useState('');
 
   const letters = ['الف', 'ب', 'ج', 'د', 'ه', 'و'];
 
   const updateOption = (id: string, field: 'text' | 'isCorrect', value: string | boolean) => {
-    if (field === 'isCorrect') {
-      setOptions(options.map(opt => ({ ...opt, isCorrect: opt.id === id ? true : false })));
-    } else {
-      setOptions(options.map(opt => opt.id === id ? { ...opt, text: value as string } : opt));
-    }
+    setOptions(prev =>
+      prev.map(opt => {
+        if (field === 'isCorrect') {
+          return { ...opt, isCorrect: opt.id === id };
+        }
+        return opt.id === id ? { ...opt, text: value as string } : opt;
+      })
+    );
   };
 
   const addOption = () => {
-    if (options.length < 6) {
-      setOptions([...options, { id: uuidv4(), text: '', isCorrect: false }]);
-    }
+    setOptions(prev => {
+      if (prev.length >= 6) return prev;
+      return [...prev, { id: uuidv4(), text: '', isCorrect: false }];
+    });
   };
 
   const removeOption = (id: string) => {
-    if (options.length <= 2) return;
-    const removed = options.find(o => o.id === id);
-    const newOptions = options.filter(o => o.id !== id);
-    if (removed?.isCorrect && newOptions.length > 0) {
-      newOptions[0].isCorrect = false;
-    }
-    setOptions(newOptions);
+    setOptions(prev => {
+      if (prev.length <= 2) return prev;
+      const removed = prev.find(o => o.id === id);
+      const next = prev.filter(o => o.id !== id);
+
+      if (removed?.isCorrect && next.length > 0) {
+        next[0] = { ...next[0], isCorrect: true };
+      }
+
+      return next;
+    });
   };
 
   const handleSubmit = () => {
@@ -58,35 +70,42 @@ const MultipleChoiceForm: React.FC<MultipleChoiceFormProps> = ({
       setError('متن سوال را وارد کنید.');
       return;
     }
+
     const filledOptions = options.filter(o => o.text.trim());
     if (filledOptions.length < 2) {
       setError('حداقل ۲ گزینه باید پر شده باشد.');
       return;
     }
+
+    if (!filledOptions.some(o => o.isCorrect)) {
+      setError('حداقل یک گزینه را به عنوان پاسخ صحیح مشخص کنید.');
+      return;
+    }
+
     setError('');
 
-    const finalOptions = filledOptions;
-
     if (editingQuestion && onUpdate) {
-      onUpdate({ ...editingQuestion, text: text.trim(), options: finalOptions, score });
-    } else {
-      onAdd({
-        id: uuidv4(),
-        type: 'multiple-choice',
-        text: text.trim(),
-        options: finalOptions,
-        score,
-        order: questionCount + 1,
-      });
-      setText('');
-      setOptions([
-        { id: uuidv4(), text: '', isCorrect: false },
-        { id: uuidv4(), text: '', isCorrect: false },
-        { id: uuidv4(), text: '', isCorrect: false },
-        { id: uuidv4(), text: '', isCorrect: false },
-      ]);
-      setScore(1);
+      onUpdate({ ...editingQuestion, text: text.trim(), options: filledOptions, score });
+      return;
     }
+
+    onAdd({
+      id: uuidv4(),
+      type: 'multiple-choice',
+      text: text.trim(),
+      options: filledOptions,
+      score,
+      order: questionCount + 1,
+    });
+
+    setText('');
+    setOptions([
+      { id: uuidv4(), text: '', isCorrect: false },
+      { id: uuidv4(), text: '', isCorrect: false },
+      { id: uuidv4(), text: '', isCorrect: false },
+      { id: uuidv4(), text: '', isCorrect: false },
+    ]);
+    setScore(1);
   };
 
   return (
@@ -97,7 +116,10 @@ const MultipleChoiceForm: React.FC<MultipleChoiceFormProps> = ({
         </label>
         <textarea
           value={text}
-          onChange={e => { setText(e.target.value); setError(''); }}
+          onChange={e => {
+            setText(e.target.value);
+            setError('');
+          }}
           placeholder="متن سوال چهارگزینه‌ای را بنویسید..."
           rows={3}
           className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 resize-none text-right"
@@ -136,7 +158,10 @@ const MultipleChoiceForm: React.FC<MultipleChoiceFormProps> = ({
               >
                 {opt.isCorrect && <span className="text-xs">✓</span>}
               </button>
-              <span className="text-sm font-bold text-gray-600 w-8 text-center">{letters[i]})</span>
+
+              <span className="text-sm font-bold text-gray-600 w-8 text-center">
+                {letters[i]})</span>
+
               <input
                 type="text"
                 value={opt.text}
@@ -149,6 +174,7 @@ const MultipleChoiceForm: React.FC<MultipleChoiceFormProps> = ({
                 }`}
                 dir="rtl"
               />
+
               <button
                 type="button"
                 onClick={() => removeOption(opt.id)}
@@ -160,6 +186,7 @@ const MultipleChoiceForm: React.FC<MultipleChoiceFormProps> = ({
             </div>
           ))}
         </div>
+
         {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
       </div>
 
@@ -168,11 +195,24 @@ const MultipleChoiceForm: React.FC<MultipleChoiceFormProps> = ({
         <div className="flex gap-3">
           {editingQuestion ? (
             <>
-              <button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all">✓ ذخیره</button>
-              <button onClick={onCancel} className="px-5 py-2.5 border-2 border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50">انصراف</button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all"
+              >
+                ✓ ذخیره
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-5 py-2.5 border-2 border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50"
+              >
+                انصراف
+              </button>
             </>
           ) : (
             <button
+              type="button"
               onClick={handleSubmit}
               className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-md"
             >
