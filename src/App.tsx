@@ -2,8 +2,7 @@ import React, { useEffect, useState } from "react";
 import HeaderForm from "./components/HeaderForm";
 import QuestionSection from "./components/QuestionSection";
 import ExamList from "./components/ExamList";
-import { saveExam, getAllExams } from "./utils/storage";
-import { exportPDF, exportWord } from "./utils/export";
+import { getAllExams, saveExam } from "./utils/storage";
 import { v4 as uuidv4 } from "uuid";
 
 export default function App() {
@@ -17,26 +16,16 @@ export default function App() {
     setExams(getAllExams());
   }, []);
 
-  const safeExportPDF = async () => {
-    try {
-      await exportPDF("exam-container");
-    } catch (e) {
-      console.log(e);
-      alert("خطا در PDF");
-    }
-  };
+  const addExam = () => {
+    const exam = {
+      id: examId,
+      header,
+      questions,
+      totalScore: questions.reduce((a, b) => a + (b.score || 1), 0),
+    };
 
-  const safeExportWord = async () => {
-    try {
-      await exportWord({
-        header,
-        questions,
-        id: examId,
-      } as any);
-    } catch (e) {
-      console.log(e);
-      alert("خطا در Word");
-    }
+    saveExam(exam);
+    setExams(getAllExams());
   };
 
   return (
@@ -47,27 +36,18 @@ export default function App() {
       <HeaderForm header={header} onChange={setHeader} />
 
       <QuestionSection
-        type="multiple-choice"
         questions={questions}
         onAdd={(q: any) => setQuestions([...questions, q])}
-        onUpdate={() => {}}
-        onDelete={() => {}}
-        allQuestionsCount={questions.length}
-        startIndex={1}
-        icon=""
-        bgColor=""
-        borderColor=""
       />
 
-      <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-        <button onClick={safeExportPDF}>PDF</button>
-        <button onClick={safeExportWord}>Word</button>
-      </div>
+      <button onClick={addExam}>
+        ذخیره آزمون
+      </button>
 
-      <div id="exam-container" style={{ marginTop: 20 }}>
+      <div id="exam-container">
         {questions.map((q, i) => (
           <div key={i}>
-            {i + 1}. {q.text}
+            {i + 1}) {q.text}
           </div>
         ))}
       </div>
