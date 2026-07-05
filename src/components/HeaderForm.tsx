@@ -14,12 +14,7 @@ const HeaderForm: React.FC<HeaderFormProps> = ({ header, onChange }) => {
     onChange({ ...header, [field]: value });
   };
 
-  const fields: {
-    key: keyof HeaderInfo;
-    label: string;
-    placeholder: string;
-    icon: string;
-  }[] = [
+  const fields: { key: keyof HeaderInfo; label: string; placeholder: string; icon: string }[] = [
     { key: 'schoolName', label: 'نام دبیرستان', placeholder: 'مثال: دبیرستان شهید بهشتی', icon: '🏫' },
     { key: 'studentName', label: 'نام و نام خانوادگی', placeholder: 'نام دانش‌آموز', icon: '👤' },
     { key: 'fatherName', label: 'نام پدر', placeholder: 'نام پدر دانش‌آموز', icon: '👨' },
@@ -31,13 +26,8 @@ const HeaderForm: React.FC<HeaderFormProps> = ({ header, onChange }) => {
     { key: 'examTitle', label: 'عنوان آزمون', placeholder: 'مثال: آزمون نوبت اول', icon: '📝' },
   ];
 
-  const filledCount = Object.values(header).filter(
-    v => typeof v === 'string' && v.trim()
-  ).length;
-
-  const hasPreview = Object.values(header).some(
-    v => typeof v === 'string' && v.trim()
-  );
+  const filledCount = Object.values(header).filter(v => typeof v === 'string' && v.trim()).length;
+  const hasPreview = Object.values(header).some(v => typeof v === 'string' && v.trim());
 
   return (
     <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
@@ -103,17 +93,6 @@ const HeaderForm: React.FC<HeaderFormProps> = ({ header, onChange }) => {
               <div>بسمه تعالی</div>
               <div>اداره آموزش و پرورش</div>
               {header.schoolName && <div>{header.schoolName}</div>}
-
-              <div style={{ marginTop: 10, display: 'grid', gap: 4 }}>
-                <div>نام و نام خانوادگی: {header.studentName || ''}</div>
-                <div>نام پدر: {header.fatherName || ''}</div>
-                <div>درس: {header.subject || ''}</div>
-                <div>پایه: {header.grade || ''}</div>
-                <div>سال تحصیلی: {header.academicYear || ''}</div>
-                <div>تاریخ: {header.date || ''}</div>
-                <div>دبیر: {header.teacherName || '___'}</div>
-                <div>عنوان: {header.examTitle || '___'}</div>
-              </div>
             </div>
           )}
         </div>
