@@ -13,11 +13,15 @@ interface ShortAnswerFormProps {
 }
 
 const ShortAnswerForm: React.FC<ShortAnswerFormProps> = ({
-  onAdd, editingQuestion, onUpdate, onCancel, questionCount
+  onAdd,
+  editingQuestion,
+  onUpdate,
+  onCancel,
+  questionCount,
 }) => {
   const [text, setText] = useState(editingQuestion?.text || '');
   const [answer, setAnswer] = useState(editingQuestion?.answer || '');
-  const [score, setScore] = useState(editingQuestion?.score || 1);
+  const [score, setScore] = useState(editingQuestion?.score ?? 1);
   const [error, setError] = useState('');
 
   const handleSubmit = () => {
@@ -25,23 +29,32 @@ const ShortAnswerForm: React.FC<ShortAnswerFormProps> = ({
       setError('متن سوال را وارد کنید.');
       return;
     }
+
     setError('');
 
+    const payload = {
+      text: text.trim(),
+      answer: answer.trim(),
+      score,
+    };
+
     if (editingQuestion && onUpdate) {
-      onUpdate({ ...editingQuestion, text: text.trim(), answer, score });
-    } else {
-      onAdd({
-        id: uuidv4(),
-        type: 'short-answer',
-        text: text.trim(),
-        answer,
-        score,
-        order: questionCount + 1,
-      });
-      setText('');
-      setAnswer('');
-      setScore(1);
+      onUpdate({ ...editingQuestion, ...payload });
+      return;
     }
+
+    onAdd({
+      id: uuidv4(),
+      type: 'short-answer',
+      text: payload.text,
+      answer: payload.answer,
+      score: payload.score,
+      order: questionCount + 1,
+    });
+
+    setText('');
+    setAnswer('');
+    setScore(1);
   };
 
   return (
@@ -52,7 +65,10 @@ const ShortAnswerForm: React.FC<ShortAnswerFormProps> = ({
         </label>
         <textarea
           value={text}
-          onChange={e => { setText(e.target.value); setError(''); }}
+          onChange={e => {
+            setText(e.target.value);
+            setError('');
+          }}
           placeholder="سوال پاسخ کوتاه را بنویسید..."
           rows={3}
           className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 resize-none text-right"
@@ -77,24 +93,5 @@ const ShortAnswerForm: React.FC<ShortAnswerFormProps> = ({
 
       <div className="flex items-center justify-between pt-2">
         <ScoreSelector value={score} onChange={setScore} />
-        <div className="flex gap-3">
-          {editingQuestion ? (
-            <>
-              <button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all">✓ ذخیره</button>
-              <button onClick={onCancel} className="px-5 py-2.5 border-2 border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50">انصراف</button>
-            </>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-md"
-            >
-              <Plus size={18} /> افزودن سوال
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
 
-export default ShortAnswerForm;
+        <div className="flex gap
