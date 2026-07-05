@@ -1,127 +1,144 @@
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import { Document, Packer, Paragraph, TextRun } from 'docx';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
-import { ExamData } from '../types';
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import { Document, Packer, Paragraph, TextRun } from "docx";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
+import { ExamData } from "../types";
 
 /* =========================
-   CHECK NATIVE
+   PLATFORM CHECK
 ========================= */
 const isNative = () =>
-  !!(window as any).Capacitor?.isNativePlatform();
+  !!(window as any)?.Capacitor?.isNativePlatform?.();
 
 /* =========================
-   CREATE BASE64
+   FOLDER NAME
+========================= */
+const FOLDER = "Exam";
+
+/* =========================
+   BASE64 CONVERT
 ========================= */
 const blobToBase64 = (blob: Blob): Promise<string> => {
   return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onloadend = () => {
-      resolve((reader.result as string).split(',')[1]);
-    };
+    reader.onloadend = () =>
+      resolve((reader.result as string).split(",")[1]);
     reader.readAsDataURL(blob);
   });
 };
 
 /* =========================
-   PDF EXPORT (ANDROID READY)
+   SAVE TO ANDROID STORAGE
 ========================= */
-export const exportPDF = async (
-  elementId: string,
-  fileName = `exam_${Date.now()}`
-) => {
-  const element = document.getElementById(elementId);
-  if (!element) throw new Error('PDF element not found');
-
-  const canvas = await html2canvas(element, {
-    scale: 2,
-    useCORS: true,
-  });
-
-  const imgData = canvas.toDataURL('image/png');
-
-  const pdf = new jsPDF('p', 'mm', 'a4');
-
-  const width = 210;
-  const height = (canvas.height * width) / canvas.width;
-
-  pdf.addImage(imgData, 'PNG', 0, 0, width, height);
-
-  const blob = pdf.output('blob');
+const saveToDevice = async (fileName: string, blob: Blob, mime: string) => {
   const base64 = await blobToBase64(blob);
 
-  const path = `exam/${fileName}.pdf`;
+  return await Filesystem.writeFile({
+    path: `${FOLDER}/${fileName}`,
+    data: base64,
+    directory: Directory.Documents,
+    recursive: true,
+  });
+};
 
-  if (isNative()) {
-    const saved = await Filesystem.writeFile({
-      path,
-      data: base64,
-      directory: Directory.Documents,
-      recursive: true,
-    });
-
+/* =========================
+   SHARE FILE
+========================= */
+const shareFile = async (fileUri: string, title: string) => {
+  try {
     await Share.share({
-      title: 'PDF Exam',
-      text: 'فایل آزمون PDF',
-      url: saved.uri,
-      dialogTitle: 'اشتراک گذاری فایل (بله / تلگرام / واتساپ)',
+      title,
+      url: fileUri,
+      dialogTitle: "اشتراک گذاری فایل",
     });
-
-    return saved.uri;
-  } else {
-    pdf.save(`${fileName}.pdf`);
+  } catch (e) {
+    console.log("Share error:", e);
   }
 };
 
 /* =========================
-   WORD EXPORT (ANDROID READY)
+   WORD EXPORT
 ========================= */
 export const exportWord = async (exam: ExamData) => {
-  const doc = new Document({
-    sections: [
-      {
-        children: exam.questions.map(
-          (q, i) =>
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: `${i + 1}) ${q.text} (${q.score})`,
-                }),
-              ],
-            })
-        ),
-      },
-    ],
-  });
-
-  const blob = await Packer.toBlob(doc);
-  const base64 = await blobToBase64(blob);
-
-  const fileName = `exam_${Date.now()}.docx`;
-  const path = `exam/${fileName}`;
-
-  if (isNative()) {
-    const saved = await Filesystem.writeFile({
-      path,
-      data: base64,
-      directory: Directory.Documents,
-      recursive: true,
+  try {
+    const doc = new Document({
+      sections: [
+        {
+          children: exam.questions.map(
+            (q, i) =>
+              new Paragraph({
+                children: [
+                  new TextRun(`${i + 1}) ${q.text} (${q.score})`),
+                ],
+              })
+          ),
+        },
+      ],
     });
 
-    await Share.share({
-      title: 'Word Exam',
-      text: 'فایل Word آزمون',
-      url: saved.uri,
-      dialogTitle: 'اشتراک گذاری (بله / تلگرام / واتساپ)',
-    });
+    const blob = await Packer.toBlob(doc);
+    const fileName = `exam_${Date.now()}.docx`;
 
-    return saved.uri;
-  } else {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    a.click();
+    if (isNative()) {
+      const saved = await saveToDevice(fileName, blob, "docx");
+      await shareFile(saved.uri, "Word Exam");
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+    }
+  } catch (err) {
+    console.error("WORD ERROR:", err);
+    alert("خطا در ساخت Word");
   }
+};
+
+/* =========================
+   PDF EXPORT (FIX + MULTI DEVICE)
+========================= */
+export const exportPDF = async (elementId: string) => {
+  try {
+    const el = document.getElementById(elementId);
+    if (!el) {
+      alert("بخش آزمون پیدا نشد");
+      return;
+    }
+
+    const canvas = await html2canvas(el, {
+      scale: 2,
+      useCORS: true,
+    });
+
+    const img = canvas.toDataURL("image/png");
+
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    const w = 210;
+    const h = (canvas.height * w) / canvas.width;
+
+    pdf.addImage(img, "PNG", 0, 0, w, h);
+
+    const blob = pdf.output("blob");
+    const fileName = `exam_${Date.now()}.pdf`;
+
+    if (isNative()) {
+      const saved = await saveToDevice(fileName, blob, "pdf");
+      await shareFile(saved.uri, "PDF Exam");
+    } else {
+      pdf.save(fileName);
+    }
+  } catch (err) {
+    console.error("PDF ERROR:", err);
+    alert("خطا در ساخت PDF");
+  }
+};
+
+/* =========================
+   PRINT
+========================= */
+export const printExam = () => {
+  window.print();
 };
