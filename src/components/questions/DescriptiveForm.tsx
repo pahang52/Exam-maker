@@ -13,12 +13,16 @@ interface DescriptiveFormProps {
 }
 
 const DescriptiveForm: React.FC<DescriptiveFormProps> = ({
-  onAdd, editingQuestion, onUpdate, onCancel, questionCount
+  onAdd,
+  editingQuestion,
+  onUpdate,
+  onCancel,
+  questionCount,
 }) => {
   const [text, setText] = useState(editingQuestion?.text || '');
   const [answerGuide, setAnswerGuide] = useState(editingQuestion?.answerGuide || '');
-  const [lines, setLines] = useState(editingQuestion?.lines || 5);
-  const [score, setScore] = useState(editingQuestion?.score || 2);
+  const [lines, setLines] = useState(editingQuestion?.lines ?? 5);
+  const [score, setScore] = useState(editingQuestion?.score ?? 2);
   const [error, setError] = useState('');
 
   const handleSubmit = () => {
@@ -26,25 +30,28 @@ const DescriptiveForm: React.FC<DescriptiveFormProps> = ({
       setError('متن سوال را وارد کنید.');
       return;
     }
+
     setError('');
 
     if (editingQuestion && onUpdate) {
       onUpdate({ ...editingQuestion, text: text.trim(), answerGuide, lines, score });
-    } else {
-      onAdd({
-        id: uuidv4(),
-        type: 'descriptive',
-        text: text.trim(),
-        answerGuide,
-        lines,
-        score,
-        order: questionCount + 1,
-      });
-      setText('');
-      setAnswerGuide('');
-      setLines(5);
-      setScore(2);
+      return;
     }
+
+    onAdd({
+      id: uuidv4(),
+      type: 'descriptive',
+      text: text.trim(),
+      answerGuide,
+      lines,
+      score,
+      order: questionCount + 1,
+    });
+
+    setText('');
+    setAnswerGuide('');
+    setLines(5);
+    setScore(2);
   };
 
   return (
@@ -55,7 +62,10 @@ const DescriptiveForm: React.FC<DescriptiveFormProps> = ({
         </label>
         <textarea
           value={text}
-          onChange={e => { setText(e.target.value); setError(''); }}
+          onChange={e => {
+            setText(e.target.value);
+            setError('');
+          }}
           placeholder="سوال تشریحی را بنویسید..."
           rows={3}
           className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 resize-none text-right"
@@ -86,13 +96,17 @@ const DescriptiveForm: React.FC<DescriptiveFormProps> = ({
               type="button"
               onClick={() => setLines(Math.max(1, lines - 1))}
               className="w-9 h-9 rounded-lg border-2 border-gray-200 flex items-center justify-center text-lg font-bold hover:bg-gray-100"
-            >−</button>
+            >
+              −
+            </button>
             <span className="w-12 text-center font-bold text-lg">{lines}</span>
             <button
               type="button"
               onClick={() => setLines(Math.min(15, lines + 1))}
               className="w-9 h-9 rounded-lg border-2 border-gray-200 flex items-center justify-center text-lg font-bold hover:bg-gray-100"
-            >+</button>
+            >
+              +
+            </button>
             <span className="text-sm text-gray-500">خط</span>
           </div>
         </div>
@@ -102,12 +116,11 @@ const DescriptiveForm: React.FC<DescriptiveFormProps> = ({
         </div>
       </div>
 
-      {/* Preview of lines */}
       <div className="bg-gray-50 rounded-xl p-3 border border-dashed border-gray-200">
         <p className="text-xs text-gray-500 mb-2">پیش‌نمایش فضای پاسخ ({lines} خط):</p>
         <div className="space-y-2">
-          {Array(Math.min(lines, 4)).fill(0).map((_, i) => (
-            <div key={i} className="border-b border-gray-300 h-6"></div>
+          {Array.from({ length: Math.min(lines, 4) }).map((_, i) => (
+            <div key={i} className="border-b border-gray-300 h-6" />
           ))}
           {lines > 4 && <p className="text-xs text-gray-400 text-center">... {lines - 4} خط دیگر</p>}
         </div>
@@ -116,11 +129,24 @@ const DescriptiveForm: React.FC<DescriptiveFormProps> = ({
       <div className="flex justify-end gap-3 pt-2">
         {editingQuestion ? (
           <>
-            <button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all">✓ ذخیره</button>
-            <button onClick={onCancel} className="px-5 py-2.5 border-2 border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50">انصراف</button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all"
+            >
+              ✓ ذخیره
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-5 py-2.5 border-2 border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50"
+            >
+              انصراف
+            </button>
           </>
         ) : (
           <button
+            type="button"
             onClick={handleSubmit}
             className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-md"
           >
