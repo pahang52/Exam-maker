@@ -1,125 +1,64 @@
 import { ExamData, Question } from '../types';
-import { Filesystem, Directory } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
 
-/* =========================
-   🔥 PDF / HTML EXPORT PRO
-========================= */
-export const exportToPDF = async (exam: ExamData): Promise<void> => {
-  const htmlContent = generatePrintHTML(exam);
+// ⚠️ مهم: import مستقیم نداریم (برای جلوگیری از خطای Vite)
+let Filesystem: any = null;
+let Share: any = null;
 
-  const base64 = await toBase64(htmlContent);
+const loadCapacitor = async () => {
+  if ((window as any).Capacitor?.isNativePlatform()) {
+    const fs = await import('@capacitor/filesystem');
+    const sh = await import('@capacitor/share');
+    Filesystem = fs.Filesystem;
+    Share = sh.Share;
+  }
+};
 
-  const fileName = `exam-${Date.now()}.html`;
+export const exportToPDF = async (exam: ExamData) => {
+  const html = generatePrintHTML(exam);
 
-  await Filesystem.writeFile({
+  // Web (مرورگر)
+  if (!(window as any).Capacitor?.isNativePlatform()) {
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.print();
+    return;
+  }
+
+  // Android APK
+  await loadCapacitor();
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const base64 = await blobToBase64(blob);
+
+  const fileName = `exam_${Date.now()}.html`;
+
+  const saved = await Filesystem.writeFile({
     path: fileName,
     data: base64,
-    directory: Directory.Documents,
-  });
-
-  const uri = await Filesystem.getUri({
-    directory: Directory.Documents,
-    path: fileName,
+    directory: 'DOCUMENTS',
   });
 
   await Share.share({
-    title: 'PDF Exam',
-    url: uri.uri,
+    title: 'دانلود PDF آزمون',
+    url: saved.uri,
+    dialogTitle: 'اشتراک یا ذخیره PDF',
   });
 };
 
-/* =========================
-   🟦 WORD EXPORT PRO
-========================= */
-export const exportToWord = async (exam: ExamData): Promise<void> => {
-  const html = generatePrintHTML(exam);
-
-  const wordHTML = `
-  <html xmlns:o="urn:schemas-microsoft-com:office:office"
-        xmlns:w="urn:schemas-microsoft-com:office:word"
-        xmlns="http://www.w3.org/TR/REC-html40">
-  <head>
-    <meta charset="utf-8">
-    <title>Exam</title>
-  </head>
-  <body>
-    ${html}
-  </body>
-  </html>
-  `;
-
-  const base64 = btoa(unescape(encodeURIComponent(wordHTML)));
-
-  const fileName = `exam-${Date.now()}.doc`;
-
-  await Filesystem.writeFile({
-    path: fileName,
-    data: base64,
-    directory: Directory.Documents,
-    mimeType: 'application/msword',
-  });
-
-  const uri = await Filesystem.getUri({
-    directory: Directory.Documents,
-    path: fileName,
-  });
-
-  await Share.share({
-    title: 'Word Exam',
-    url: uri.uri,
+const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+    reader.readAsDataURL(blob);
   });
 };
 
-/* =========================
-   🖨️ PRINT (A4 PRO)
-========================= */
-export const printExam = (exam: ExamData): void => {
-  const html = generatePrintHTML(exam);
-
-  const win = window.open('', '_blank');
-  if (!win) return;
-
-  win.document.open();
-  win.document.write(`
-    <html>
-    <head>
-      <meta charset="utf-8" />
-      <style>
-        body {
-          font-family: Vazirmatn, Arial;
-          direction: rtl;
-          padding: 20px;
-        }
-
-        @page {
-          size: A4;
-          margin: 20mm;
-        }
-
-        .question {
-          page-break-inside: avoid;
-        }
-      </style>
-    </head>
-    <body>
-      ${html}
-    </body>
-    </html>
-  `);
-
-  win.document.close();
-
-  setTimeout(() => win.print(), 500);
-};
-
-/* =========================
-   📄 HTML GENERATOR (YOUR ORIGINAL)
-========================= */
 export const generatePrintHTML = (exam: ExamData): string => {
   const { header, questions } = exam;
 
-  const groupedQuestions: Record<string, Question[]> = {
+  const grouped: Record<string, Question[]> = {
     'true-false': questions.filter(q => q.type === 'true-false'),
     'fill-blank': questions.filter(q => q.type === 'fill-blank'),
     'matching': questions.filter(q => q.type === 'matching'),
@@ -128,93 +67,43 @@ export const generatePrintHTML = (exam: ExamData): string => {
     'descriptive': questions.filter(q => q.type === 'descriptive'),
   };
 
-  const typeLabels: Record<string, string> = {
-    'true-false': 'الف) صحیح و غلط',
-    'fill-blank': 'ب) جاخالی',
-    'matching': 'ج) جورکردنی',
-    'multiple-choice': 'د) تستی',
-    'short-answer': 'ه) کوتاه پاسخ',
-    'descriptive': 'و) تشریحی',
+  const labels: any = {
+    'true-false': 'صحیح و غلط',
+    'fill-blank': 'جای خالی',
+    'matching': 'جورکردنی',
+    'multiple-choice': 'تستی',
+    'short-answer': 'کوتاه پاسخ',
+    'descriptive': 'تشریحی',
   };
 
-  let questionHTML = '';
+  let html = '';
 
-  Object.entries(groupedQuestions).forEach(([type, qs]) => {
+  Object.entries(grouped).forEach(([type, qs]) => {
     if (!qs.length) return;
 
-    questionHTML += `
-      <div class="section">
-        <div class="section-header">
-          <span>${typeLabels[type]}</span>
-        </div>
-    `;
+    html += `<h3>${labels[type]} - بارم ${qs.reduce((a, b) => a + b.score, 0)}</h3>`;
 
     qs.forEach((q, i) => {
-      questionHTML += `
-        <div class="question">
-          <div class="q-head">
-            <b>${i + 1})</b> ${q.text}
-            <span>${q.score} نمره</span>
-          </div>
-        </div>
-      `;
+      html += `<p>${i + 1}) ${q.text} (${q.score})</p>`;
     });
-
-    questionHTML += `</div>`;
   });
 
   return `
-  <html lang="fa" dir="rtl">
+  <html dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <style>
-      body {
-        font-family: Vazirmatn, Arial;
-        direction: rtl;
-        font-size: 12pt;
-      }
-
-      .section {
-        margin-bottom: 15px;
-        border: 1px solid #ccc;
-        padding: 10px;
-      }
-
-      .section-header {
-        font-weight: bold;
-        margin-bottom: 8px;
-      }
-
-      .question {
-        margin: 6px 0;
-        padding: 6px;
-        border-bottom: 1px dashed #ddd;
-      }
-
-      .q-head {
-        display: flex;
-        justify-content: space-between;
-      }
+      body { font-family: sans-serif; padding: 20px; }
+      h3 { background:#eee;padding:8px;border-radius:6px; }
+      p { margin:8px 0; }
     </style>
   </head>
   <body>
-    <h2 style="text-align:center">${header.subject || ''}</h2>
-    ${questionHTML}
+    <h2>${header.examTitle || 'آزمون'}</h2>
+    <p>${header.schoolName || ''}</p>
+    <hr/>
+    ${html}
   </body>
   </html>
   `;
 };
-
-/* =========================
-   🔧 BASE64 HELPER
-========================= */
-const toBase64 = (str: string): Promise<string> =>
-  new Promise((resolve) => {
-    const blob = new Blob([str], { type: 'text/html' });
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = reader.result?.toString().split(',')[1] || '';
-      resolve(base64);
-    };
-    reader.readAsDataURL(blob);
-  });
