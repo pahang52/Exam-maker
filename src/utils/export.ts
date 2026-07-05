@@ -3,14 +3,14 @@ import html2canvas from "html2canvas";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 
 /* =========================
-   SAFE CHECK
+   CHECK PLATFORM
 ========================= */
 const isNative = () =>
   typeof window !== "undefined" &&
   (window as any).Capacitor?.isNativePlatform?.();
 
 /* =========================
-   SHARE HELPER
+   SHARE
 ========================= */
 const shareFile = async (filePath: string, title: string) => {
   if (!isNative()) return;
@@ -28,14 +28,21 @@ const shareFile = async (filePath: string, title: string) => {
 };
 
 /* =========================
-   CREATE EXAM FOLDER
+   SAVE TO ANDROID
 ========================= */
-const getFilesystem = async () => {
-  const cap = await import("@capacitor/filesystem");
-  return {
-    Filesystem: cap.Filesystem,
-    Directory: cap.Directory,
-  };
+const saveToAndroid = async (base64: string, fileName: string) => {
+  const { Filesystem, Directory } = await import("@capacitor/filesystem");
+
+  const path = `ExamMaker/${fileName}`;
+
+  const result = await Filesystem.writeFile({
+    path,
+    data: base64,
+    directory: Directory.Documents,
+    recursive: true,
+  });
+
+  return result.uri;
 };
 
 /* =========================
@@ -43,46 +50,36 @@ const getFilesystem = async () => {
 ========================= */
 export const exportPDF = async (elementId: string) => {
   const el = document.getElementById(elementId);
-
-  if (!el) {
-    alert("عنصر پیدا نشد");
-    return;
-  }
+  if (!el) return;
 
   const canvas = await html2canvas(el, {
     scale: 2,
     useCORS: true,
   });
 
-  const imgData = canvas.toDataURL("image/png");
+  const img = canvas.toDataURL("image/png");
 
   const pdf = new jsPDF("p", "mm", "a4");
 
   const width = 210;
   const height = (canvas.height * width) / canvas.width;
 
-  pdf.addImage(imgData, "PNG", 0, 0, width, height);
+  pdf.addImage(img, "PNG", 0, 0, width, height);
 
   const fileName = `exam_${Date.now()}.pdf`;
 
-  /* ================= WEB ================= */
+  /* WEB */
   if (!isNative()) {
     pdf.save(fileName);
     return;
   }
 
-  /* ================= ANDROID ================= */
-  const { Filesystem, Directory } = await getFilesystem();
-
+  /* ANDROID */
   const base64 = pdf.output("datauristring").split(",")[1];
 
-  const result = await Filesystem.writeFile({
-    path: `Exam/${fileName}`,
-    data: base64,
-    directory: Directory.Documents,
-  });
+  const uri = await saveToAndroid(base64, fileName);
 
-  await shareFile(result.uri, "PDF Exam");
+  await shareFile(uri, "PDF Exam");
 };
 
 /* =========================
@@ -95,9 +92,7 @@ export const exportWord = async (exam: any) => {
         children: exam.questions.map(
           (q: any, i: number) =>
             new Paragraph({
-              children: [
-                new TextRun(`${i + 1}) ${q.text}`),
-              ],
+              children: [new TextRun(`${i + 1}) ${q.text}`)],
             })
         ),
       },
@@ -108,7 +103,7 @@ export const exportWord = async (exam: any) => {
 
   const fileName = `exam_${Date.now()}.docx`;
 
-  /* ================= WEB ================= */
+  /* WEB */
   if (!isNative()) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -118,22 +113,45 @@ export const exportWord = async (exam: any) => {
     return;
   }
 
-  /* ================= ANDROID ================= */
-  const { Filesystem, Directory } = await getFilesystem();
-
+  /* ANDROID */
   const base64 = await blobToBase64(blob);
 
-  const result = await Filesystem.writeFile({
-    path: `Exam/${fileName}`,
-    data: base64,
-    directory: Directory.Documents,
-  });
+  const uri = await saveToAndroid(base64, fileName);
 
-  await shareFile(result.uri, "Word Exam");
+  await shareFile(uri, "Word Exam");
 };
 
 /* =========================
-   BASE64 CONVERT
+   PRINT
+========================= */
+export const printExam = async (elementId: string) => {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+
+  const canvas = await html2canvas(el, { scale: 2 });
+
+  const img = canvas.toDataURL("image/png");
+
+  const win = window.open("", "_blank");
+  if (!win) return;
+
+  win.document.write(`
+    <html>
+      <head><title>Print</title></head>
+      <body style="text-align:center;">
+        <img src="${img}" style="width:100%" />
+        <script>
+          window.onload = () => window.print();
+        </script>
+      </body>
+    </html>
+  `);
+
+  win.document.close();
+};
+
+/* =========================
+   BASE64
 ========================= */
 const blobToBase64 = (blob: Blob): Promise<string> =>
   new Promise((resolve) => {
