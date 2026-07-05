@@ -9,13 +9,20 @@ import {
 } from "./types";
 
 import { saveExam, getAllExams } from "./utils/storage";
+
+// export ها (اگر هنوز مشکل داری چک کن مسیر درست باشه)
 import { exportPDF, exportWord } from "./utils/export";
 
 import HeaderForm from "./components/HeaderForm";
 import QuestionSection from "./components/QuestionSection";
 import ExamList from "./components/ExamList";
 
-const QUESTION_TYPES: { type: QuestionType; icon: string; bgColor: string; borderColor: string }[] = [
+const QUESTION_TYPES: {
+  type: QuestionType;
+  icon: string;
+  bgColor: string;
+  borderColor: string;
+}[] = [
   { type: "true-false", icon: "✓✗", bgColor: "bg-green-50", borderColor: "border-green-200" },
   { type: "fill-blank", icon: "📝", bgColor: "bg-blue-50", borderColor: "border-blue-200" },
   { type: "matching", icon: "↔️", bgColor: "bg-purple-50", borderColor: "border-purple-200" },
@@ -36,18 +43,33 @@ const defaultHeader: HeaderInfo = {
   examTitle: "",
 };
 
+type Tab = "designer" | "saved";
+
 const App: React.FC = () => {
+  console.log("APP LOADED"); // ✅ اینو گفتی خواستی
+
+  const [activeTab, setActiveTab] = useState<Tab>("designer");
   const [header, setHeader] = useState<HeaderInfo>(defaultHeader);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [examId, setExamId] = useState<string>(uuidv4());
   const [savedExams, setSavedExams] = useState<ExamData[]>([]);
-  const [tab, setTab] = useState<"designer" | "saved">("designer");
+
+  const [notification, setNotification] = useState<{
+    msg: string;
+    type: "success" | "error";
+  } | null>(null);
 
   useEffect(() => {
+    console.log("LOAD SAVED EXAMS");
     setSavedExams(getAllExams());
   }, []);
 
-  const totalScore = questions.reduce((s, q) => s + q.score, 0);
+  const showNotification = (msg: string, type: "success" | "error" = "success") => {
+    setNotification({ msg, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  const totalScore = questions.reduce((sum, q) => sum + q.score, 0);
 
   const getExamData = (): ExamData => ({
     id: examId,
@@ -59,109 +81,71 @@ const App: React.FC = () => {
   });
 
   const handleSave = () => {
-    if (!questions.length) return alert("حداقل یک سوال اضافه کنید");
+    if (!questions.length) {
+      showNotification("حداقل یک سوال اضافه کنید", "error");
+      return;
+    }
+
     saveExam(getExamData());
     setSavedExams(getAllExams());
+    showNotification("ذخیره شد ✅");
   };
 
-  const handlePDF = async () => {
-    if (!questions.length) return;
-    await exportPDF("exam-container");
+  const handlePrintPDF = async () => {
+    try {
+      await exportPDF("exam-container"); // مهم
+      showNotification("PDF ساخته شد");
+    } catch (e) {
+      console.error(e);
+      showNotification("خطا در PDF", "error");
+    }
   };
 
-  const handleWord = async () => {
-    if (!questions.length) return;
-    await exportWord(getExamData());
+  const handleExportWord = async () => {
+    try {
+      await exportWord(getExamData());
+      showNotification("Word ساخته شد");
+    } catch (e) {
+      console.error(e);
+      showNotification("خطا در Word", "error");
+    }
   };
 
-  const handleAdd = (q: Question) =>
-    setQuestions((p) => [...p, q]);
-
-  const handleUpdate = (q: Question) =>
-    setQuestions((p) => p.map((x) => (x.id === q.id ? q : x)));
-
-  const handleDelete = (id: string) =>
-    setQuestions((p) => p.filter((x) => x.id !== id));
-
-  const byType = Object.fromEntries(
-    QUESTION_TYPES.map((t) => [
-      t.type,
-      questions.filter((q) => q.type === t.type),
-    ])
-  );
+  const handleNew = () => {
+    setHeader(defaultHeader);
+    setQuestions([]);
+    setExamId(uuidv4());
+  };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100" dir="rtl">
 
-      <header className="bg-blue-900 text-white p-4 font-bold">
-        Exam Builder
+      {notification && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-black text-white px-4 py-2 rounded">
+          {notification.msg}
+        </div>
+      )}
+
+      <header className="bg-blue-900 text-white p-4">
+        <h1>طراح سوالات آزمون</h1>
       </header>
 
-      <div className="p-4">
+      <main className="p-4">
 
-        {tab === "designer" ? (
+        {activeTab === "designer" ? (
           <>
             <HeaderForm header={header} onChange={setHeader} />
 
             <div id="exam-container">
-              {QUESTION_TYPES.map((t) => (
+              {QUESTION_TYPES.map((qt) => (
                 <QuestionSection
-                  key={t.type}
-                  type={t.type}
-                  questions={byType[t.type] || []}
+                  key={qt.type}
+                  type={qt.type}
+                  questions={questions.filter(q => q.type === qt.type)}
                   allQuestionsCount={questions.length}
                   startIndex={1}
-                  onAdd={handleAdd}
-                  onUpdate={handleUpdate}
-                  onDelete={handleDelete}
-                  icon={t.icon}
-                  bgColor={t.bgColor}
-                  borderColor={t.borderColor}
-                />
-              ))}
-            </div>
-
-            <div className="fixed bottom-3 left-0 right-0 flex justify-center gap-2">
-              <button onClick={handleSave} className="bg-green-600 text-white px-3 py-2 rounded">
-                Save
-              </button>
-
-              <button onClick={handlePDF} className="bg-red-600 text-white px-3 py-2 rounded">
-                PDF
-              </button>
-
-              <button onClick={handleWord} className="bg-blue-600 text-white px-3 py-2 rounded">
-                Word
-              </button>
-
-              <button
-                onClick={() => {
-                  setHeader(defaultHeader);
-                  setQuestions([]);
-                  setExamId(uuidv4());
-                }}
-                className="bg-gray-600 text-white px-3 py-2 rounded"
-              >
-                New
-              </button>
-            </div>
-          </>
-        ) : (
-          <ExamList
-            exams={savedExams}
-            onEdit={(e) => {
-              setHeader(e.header);
-              setQuestions(e.questions);
-              setExamId(e.id);
-              setTab("designer");
-            }}
-            onRefresh={() => setSavedExams(getAllExams())}
-          />
-        )}
-
-      </div>
-    </div>
-  );
-};
-
-export default App;
+                  onAdd={(q) => setQuestions([...questions, q])}
+                  onUpdate={(q) =>
+                    setQuestions(questions.map(x => x.id === q.id ? q : x))
+                  }
+                 
