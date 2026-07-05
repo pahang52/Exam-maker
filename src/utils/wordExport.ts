@@ -10,83 +10,95 @@ import {
   BorderStyle,
   AlignmentType,
   ShadingType,
+  convertInchesToTwip,
 } from 'docx';
+
 import { saveAs } from 'file-saver';
 import { ExamData, Question } from '../types';
 
-const rtlParagraph = (text: string, options?: {
+/* =========================
+   RTL TEXT HELPER (PRO)
+========================= */
+const rtlText = (text: string, bold = false, size = 24, color = '000000') =>
+  new TextRun({
+    text,
+    bold,
+    size,
+    color,
+    rightToLeft: true,
+  });
+
+const rtlPara = (text: string, opts?: {
   bold?: boolean;
   size?: number;
   color?: string;
-  alignment?: typeof AlignmentType[keyof typeof AlignmentType];
-}) => {
-  return new Paragraph({
+  indent?: number;
+}) =>
+  new Paragraph({
     bidirectional: true,
-    alignment: options?.alignment || AlignmentType.RIGHT,
+    alignment: AlignmentType.RIGHT,
+    indent: opts?.indent
+      ? { right: convertInchesToTwip(opts.indent) }
+      : undefined,
     children: [
       new TextRun({
         text,
-        bold: options?.bold || false,
-        size: options?.size || 24,
-        color: options?.color || '000000',
+        bold: opts?.bold ?? false,
+        size: opts?.size ?? 24,
+        color: opts?.color ?? '000000',
         rightToLeft: true,
       }),
     ],
   });
-};
 
-const sectionHeader = (title: string, score: number) => {
-  return new Paragraph({
+/* =========================
+   SECTION HEADER
+========================= */
+const sectionHeader = (title: string, score: number) =>
+  new Paragraph({
     bidirectional: true,
     alignment: AlignmentType.RIGHT,
+    spacing: { before: 250, after: 120 },
     shading: {
       type: ShadingType.SOLID,
       color: 'E3F2FD',
     },
-    spacing: { before: 200, after: 100 },
     children: [
-      new TextRun({
-        text: `${title}     `,
-        bold: true,
-        size: 28,
-        color: '0D47A1',
-        rightToLeft: true,
-      }),
-      new TextRun({
-        text: `بارم: ${score} نمره`,
-        bold: false,
-        size: 22,
-        color: '333333',
-        rightToLeft: true,
-      }),
+      rtlText(title, true, 28, '0D47A1'),
+      rtlText(`   |   بارم: ${score}`, false, 22, '333333'),
     ],
   });
-};
 
-export const exportToWord = async (exam: ExamData): Promise<void> => {
+/* =========================
+   MAIN EXPORT WORD
+========================= */
+export const exportToWord = async (exam: ExamData) => {
   const { header, questions } = exam;
 
   const children: (Paragraph | Table)[] = [];
 
-  // Bismillah
+  /* -------------------------
+     BISMILLAH
+  ------------------------- */
   children.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 200 },
-      children: [
-        new TextRun({
-          text: 'بسمه تعالی',
-          bold: true,
-          size: 36,
-          rightToLeft: true,
-        }),
-      ],
+      spacing: { after: 300 },
+      children: [rtlText('بسمه تعالی', true, 40)],
     })
   );
 
-  // Header Table
+  /* -------------------------
+     HEADER TABLE (PRO)
+  ------------------------- */
   const headerTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 2 },
+      bottom: { style: BorderStyle.SINGLE, size: 2 },
+      left: { style: BorderStyle.SINGLE, size: 2 },
+      right: { style: BorderStyle.SINGLE, size: 2 },
+    },
     rows: [
       new TableRow({
         children: [
@@ -97,66 +109,46 @@ export const exportToWord = async (exam: ExamData): Promise<void> => {
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({
-                    text: 'اداره آموزش و پرورش',
-                    bold: true,
-                    size: 32,
-                    color: 'FFFFFF',
-                    rightToLeft: true,
-                  }),
+                  rtlText('اداره آموزش و پرورش', true, 32, 'FFFFFF'),
                 ],
               }),
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({
-                    text: header.schoolName || 'دبیرستان',
-                    size: 28,
-                    color: 'FFFFFF',
-                    rightToLeft: true,
-                  }),
+                  rtlText(header.schoolName || 'دبیرستان', false, 28, 'FFFFFF'),
                 ],
               }),
             ],
           }),
         ],
       }),
+
       new TableRow({
         children: [
-          new TableCell({
-            children: [rtlParagraph(`نام و نام خانوادگی: ${header.studentName || ''}`, { bold: false })],
-          }),
-          new TableCell({
-            children: [rtlParagraph(`نام پدر: ${header.fatherName || ''}`, { bold: false })],
-          }),
-          new TableCell({
-            children: [rtlParagraph(`درس: ${header.subject || ''}`, { bold: false })],
-          }),
+          new TableCell({ children: [rtlPara(`نام: ${header.studentName || ''}`)] }),
+          new TableCell({ children: [rtlPara(`پدر: ${header.fatherName || ''}`)] }),
+          new TableCell({ children: [rtlPara(`درس: ${header.subject || ''}`)] }),
         ],
       }),
+
       new TableRow({
         children: [
-          new TableCell({
-            children: [rtlParagraph(`پایه: ${header.grade || ''}`, { bold: false })],
-          }),
-          new TableCell({
-            children: [rtlParagraph(`سال تحصیلی: ${header.academicYear || ''}`, { bold: false })],
-          }),
-          new TableCell({
-            children: [rtlParagraph(`تاریخ: ${header.date || ''}`, { bold: false })],
-          }),
+          new TableCell({ children: [rtlPara(`پایه: ${header.grade || ''}`)] }),
+          new TableCell({ children: [rtlPara(`سال: ${header.academicYear || ''}`)] }),
+          new TableCell({ children: [rtlPara(`تاریخ: ${header.date || ''}`)] }),
         ],
       }),
+
       new TableRow({
         children: [
           new TableCell({
-            children: [rtlParagraph(`نام دبیر: ${header.teacherName || ''}`, { bold: true })],
+            children: [rtlPara(`دبیر: ${header.teacherName || ''}`, { bold: true })],
           }),
           new TableCell({
-            children: [rtlParagraph(`عنوان: ${header.examTitle || 'آزمون'}`, { bold: true })],
+            children: [rtlPara(`عنوان: ${header.examTitle || 'آزمون'}`, { bold: true })],
           }),
           new TableCell({
-            children: [rtlParagraph(`مجموع بارم: ${exam.totalScore} نمره`, { bold: true })],
+            children: [rtlPara(`بارم کل: ${exam.totalScore}`, { bold: true })],
           }),
         ],
       }),
@@ -164,10 +156,12 @@ export const exportToWord = async (exam: ExamData): Promise<void> => {
   });
 
   children.push(headerTable);
-  children.push(new Paragraph({ spacing: { before: 200, after: 200 }, children: [] }));
+  children.push(new Paragraph({ spacing: { after: 300 }, children: [] }));
 
-  // Questions
-  const groupedQuestions: Record<string, Question[]> = {
+  /* -------------------------
+     GROUP QUESTIONS
+  ------------------------- */
+  const grouped: Record<string, Question[]> = {
     'true-false': questions.filter(q => q.type === 'true-false'),
     'fill-blank': questions.filter(q => q.type === 'fill-blank'),
     'matching': questions.filter(q => q.type === 'matching'),
@@ -176,54 +170,50 @@ export const exportToWord = async (exam: ExamData): Promise<void> => {
     'descriptive': questions.filter(q => q.type === 'descriptive'),
   };
 
-  const typeLabels: Record<string, string> = {
-    'true-false': 'الف) صحیح و غلط',
-    'fill-blank': 'ب) جاخالی',
-    'matching': 'ج) جورکردنی',
-    'multiple-choice': 'د) تستی (چهارگزینه‌ای)',
-    'short-answer': 'ه) پاسخ کوتاه',
-    'descriptive': 'و) تشریحی',
+  const labels: Record<string, string> = {
+    'true-false': 'صحیح / غلط',
+    'fill-blank': 'جای خالی',
+    'matching': 'جورکردنی',
+    'multiple-choice': 'چهارگزینه‌ای',
+    'short-answer': 'پاسخ کوتاه',
+    'descriptive': 'تشریحی',
   };
 
-  Object.entries(groupedQuestions).forEach(([type, qs]) => {
-    if (qs.length === 0) return;
-    const totalScore = qs.reduce((sum, q) => sum + q.score, 0);
+  Object.entries(grouped).forEach(([type, qs]) => {
+    if (!qs.length) return;
 
-    children.push(sectionHeader(typeLabels[type], totalScore));
+    const total = qs.reduce((s, q) => s + q.score, 0);
+    children.push(sectionHeader(labels[type], total));
 
-    qs.forEach((q, idx) => {
-      children.push(...renderQuestionWord(q, idx + 1));
+    qs.forEach((q, i) => {
+      children.push(...renderQuestion(q, i + 1));
     });
-
-    children.push(new Paragraph({ spacing: { before: 100, after: 100 }, children: [] }));
   });
 
-  // Footer
+  /* -------------------------
+     FOOTER
+  ------------------------- */
   children.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 400 },
-      children: [
-        new TextRun({
-          text: 'موفق و پیروز باشید 🌟',
-          size: 24,
-          color: '555555',
-          rightToLeft: true,
-        }),
-      ],
+      children: [rtlText('موفق باشید 🌟', false, 26, '555555')],
     })
   );
 
+  /* -------------------------
+     DOC BUILD
+  ------------------------- */
   const doc = new Document({
     sections: [
       {
         properties: {
           page: {
             margin: {
-              top: 1000,
-              bottom: 1000,
-              left: 1200,
-              right: 1200,
+              top: convertInchesToTwip(0.7),
+              bottom: convertInchesToTwip(0.7),
+              left: convertInchesToTwip(0.8),
+              right: convertInchesToTwip(0.8),
             },
           },
         },
@@ -233,203 +223,85 @@ export const exportToWord = async (exam: ExamData): Promise<void> => {
   });
 
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, `آزمون_${header.subject || 'سوالات'}_${new Date().toLocaleDateString('fa-IR').replace(/\//g, '-')}.docx`);
+  saveAs(
+    blob,
+    `exam_${header.subject || 'file'}_${Date.now()}.docx`
+  );
 };
 
-const renderQuestionWord = (q: Question, idx: number): (Paragraph | Table)[] => {
-  const result: (Paragraph | Table)[] = [];
+/* =========================
+   QUESTION RENDERER PRO
+========================= */
+const renderQuestion = (q: Question, idx: number): (Paragraph | Table)[] => {
+  const out: (Paragraph | Table)[] = [];
+
+  /* Question Header */
+  out.push(
+    new Paragraph({
+      bidirectional: true,
+      spacing: { before: 120, after: 80 },
+      children: [
+        rtlText(`${idx}) `, true, 24, '1A237E'),
+        rtlText(q.text, false, 24),
+        rtlText(`   [${q.score} نمره]`, false, 20, '666666'),
+      ],
+    })
+  );
 
   switch (q.type) {
+
     case 'true-false':
-      result.push(
-        new Paragraph({
-          bidirectional: true,
-          alignment: AlignmentType.RIGHT,
-          spacing: { before: 100, after: 60 },
-          children: [
-            new TextRun({ text: `${idx}) `, bold: true, size: 24, color: '1A237E', rightToLeft: true }),
-            new TextRun({ text: q.text, size: 24, rightToLeft: true }),
-            new TextRun({ text: `    [بارم: ${q.score}]`, size: 20, color: '666666', rightToLeft: true }),
-          ],
-        }),
-        new Paragraph({
-          bidirectional: true,
-          alignment: AlignmentType.RIGHT,
-          spacing: { before: 40, after: 100 },
-          children: [
-            new TextRun({ text: '☐ صحیح      ☐ غلط', size: 22, rightToLeft: true }),
-          ],
-        })
+      out.push(
+        rtlPara('☐ صحیح        ☐ غلط', false, 22)
       );
       break;
 
     case 'fill-blank':
-      result.push(
-        new Paragraph({
-          bidirectional: true,
-          alignment: AlignmentType.RIGHT,
-          spacing: { before: 100, after: 100 },
-          children: [
-            new TextRun({ text: `${idx}) `, bold: true, size: 24, color: '1A237E', rightToLeft: true }),
-            new TextRun({ text: q.text, size: 24, rightToLeft: true }),
-            new TextRun({ text: `    [بارم: ${q.score}]`, size: 20, color: '666666', rightToLeft: true }),
-          ],
-        })
+      out.push(
+        rtlPara(q.text.replace(/_{3,}/g, '__________'))
       );
       break;
 
-    case 'matching': {
-      result.push(
-        new Paragraph({
-          bidirectional: true,
-          alignment: AlignmentType.RIGHT,
-          spacing: { before: 100, after: 80 },
-          children: [
-            new TextRun({ text: `${idx}) `, bold: true, size: 24, color: '1A237E', rightToLeft: true }),
-            new TextRun({ text: q.text || 'موارد ستون الف را با ستون ب جور کنید.', size: 24, rightToLeft: true }),
-            new TextRun({ text: `    [بارم: ${q.score}]`, size: 20, color: '666666', rightToLeft: true }),
-          ],
-        })
-      );
-
-      const rightLetters = ['الف', 'ب', 'ج', 'د', 'ه', 'و', 'ز', 'ح'];
-      const matchingTable = new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({
-                shading: { type: ShadingType.SOLID, color: 'E8EAF6' },
-                children: [
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    children: [new TextRun({ text: 'ستون الف', bold: true, size: 22, rightToLeft: true })],
-                  }),
-                ],
-              }),
-              new TableCell({
-                shading: { type: ShadingType.SOLID, color: 'E8EAF6' },
-                children: [
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    children: [new TextRun({ text: 'ستون ب', bold: true, size: 22, rightToLeft: true })],
-                  }),
-                ],
-              }),
-            ],
-          }),
-          ...q.items.map((item, i) =>
-            new TableRow({
-              children: [
-                new TableCell({
-                  children: [
-                    new Paragraph({
-                      bidirectional: true,
-                      alignment: AlignmentType.RIGHT,
-                      children: [new TextRun({ text: `${i + 1}) ${item.left}`, size: 22, rightToLeft: true })],
-                    }),
-                  ],
-                }),
-                new TableCell({
-                  children: [
-                    new Paragraph({
-                      bidirectional: true,
-                      alignment: AlignmentType.RIGHT,
-                      children: [new TextRun({ text: `${rightLetters[i] || i + 1}) ${item.right}`, size: 22, rightToLeft: true })],
-                    }),
-                  ],
-                }),
-              ],
-            })
-          ),
-        ],
-      });
-      result.push(matchingTable);
-      result.push(new Paragraph({ spacing: { before: 80 }, children: [] }));
-      break;
-    }
-
-    case 'multiple-choice': {
-      const letters = ['الف', 'ب', 'ج', 'د'];
-      result.push(
-        new Paragraph({
-          bidirectional: true,
-          alignment: AlignmentType.RIGHT,
-          spacing: { before: 100, after: 60 },
-          children: [
-            new TextRun({ text: `${idx}) `, bold: true, size: 24, color: '1A237E', rightToLeft: true }),
-            new TextRun({ text: q.text, size: 24, rightToLeft: true }),
-            new TextRun({ text: `    [بارم: ${q.score}]`, size: 20, color: '666666', rightToLeft: true }),
-          ],
-        })
-      );
-      q.options.forEach((opt, i) => {
-        result.push(
-          new Paragraph({
-            bidirectional: true,
-            alignment: AlignmentType.RIGHT,
-            spacing: { before: 30, after: 30 },
-            indent: { right: 400 },
-            children: [
-              new TextRun({ text: `○ ${letters[i] || i + 1}) ${opt.text}`, size: 22, rightToLeft: true }),
-            ],
-          })
+    case 'multiple-choice':
+      q.options?.forEach(opt => {
+        out.push(
+          rtlPara(`○ ${opt.text}`, false, 22, undefined, 0.2)
         );
       });
-      result.push(new Paragraph({ spacing: { before: 60 }, children: [] }));
       break;
-    }
 
     case 'short-answer':
-      result.push(
-        new Paragraph({
-          bidirectional: true,
-          alignment: AlignmentType.RIGHT,
-          spacing: { before: 100, after: 60 },
-          children: [
-            new TextRun({ text: `${idx}) `, bold: true, size: 24, color: '1A237E', rightToLeft: true }),
-            new TextRun({ text: q.text, size: 24, rightToLeft: true }),
-            new TextRun({ text: `    [بارم: ${q.score}]`, size: 20, color: '666666', rightToLeft: true }),
-          ],
-        }),
-        new Paragraph({
-          bidirectional: true,
-          alignment: AlignmentType.RIGHT,
-          spacing: { before: 30, after: 100 },
-          children: [new TextRun({ text: 'پاسخ: ___________________________', size: 22, color: '999999', rightToLeft: true })],
-        })
+      out.push(
+        rtlPara('پاسخ: __________________________')
       );
       break;
 
-    case 'descriptive': {
-      result.push(
-        new Paragraph({
-          bidirectional: true,
-          alignment: AlignmentType.RIGHT,
-          spacing: { before: 100, after: 60 },
-          children: [
-            new TextRun({ text: `${idx}) `, bold: true, size: 24, color: '1A237E', rightToLeft: true }),
-            new TextRun({ text: q.text, size: 24, rightToLeft: true }),
-            new TextRun({ text: `    [بارم: ${q.score}]`, size: 20, color: '666666', rightToLeft: true }),
-          ],
-        })
-      );
-      const lineCount = q.lines || 5;
-      for (let i = 0; i < lineCount; i++) {
-        result.push(
-          new Paragraph({
-            spacing: { before: 20, after: 20 },
-            border: {
-              bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
-            },
-            children: [new TextRun({ text: ' ', size: 28 })],
+    case 'descriptive':
+      for (let i = 0; i < (q.lines || 5); i++) {
+        out.push(
+          rtlPara('________________________________________________')
+        );
+      }
+      break;
+
+    case 'matching':
+      if (q.items?.length) {
+        out.push(
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: q.items.map((it, i) =>
+              new TableRow({
+                children: [
+                  new TableCell({ children: [rtlPara(`${i + 1}) ${it.left}`)] }),
+                  new TableCell({ children: [rtlPara(`${i + 1}) ${it.right}`)] }),
+                ],
+              })
+            ),
           })
         );
       }
-      result.push(new Paragraph({ spacing: { before: 80 }, children: [] }));
       break;
-    }
   }
 
-  return result;
+  return out;
 };
