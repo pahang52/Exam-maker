@@ -94,4 +94,37 @@ const ShortAnswerForm: React.FC<ShortAnswerFormProps> = ({
       <div className="flex items-center justify-between pt-2">
         <ScoreSelector value={score} onChange={setScore} />
 
-        <div className="flex gap
+        <div className="flex gap-3">
+          {editingQuestion ? (
+            <>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all"
+              >
+                ✓ ذخیره
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-5 py-2.5 border-2 border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50"
+              >
+                انصراف
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-md"
+            >
+              <Plus size={18} /> افزودن سوال
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ShortAnswerForm;
