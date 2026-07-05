@@ -1,55 +1,53 @@
 import React from 'react';
 import { ExamData } from '../types';
-import { exportPDF, exportWord } from '../utils/export';
 
 interface Props {
   exams: ExamData[];
+  onSelect?: (exam: ExamData) => void;
 }
 
-const ExamList: React.FC<Props> = ({ exams }) => {
-  if (!exams.length) {
-    return <div className="text-center mt-10">هیچ آزمونی نیست</div>;
+const ExamList: React.FC<Props> = ({ exams, onSelect }) => {
+  if (!exams || exams.length === 0) {
+    return <div>هیچ آزمونی نیست</div>;
   }
 
   return (
-    <div className="space-y-4">
+    <div style={{ display: 'grid', gap: 12 }}>
+      {exams.map((exam, index) => (
+        <div
+          key={exam.id || index}
+          style={{
+            border: '1px solid #ddd',
+            padding: 12,
+            borderRadius: 8,
+            background: '#fff',
+          }}
+        >
+          <div style={{ fontWeight: 'bold', marginBottom: 8 }}>
+            {exam.header?.examTitle || 'آزمون'}
+          </div>
 
-      {exams.map((exam, i) => (
-        <div key={exam.id} className="bg-white p-3 rounded shadow">
+          <div>درس: {exam.header?.subject || '-'}</div>
+          <div>نمره کل: {exam.totalScore ?? 0}</div>
 
-          <h2>{exam.header.examTitle || 'آزمون'}</h2>
-          <p>درس: {exam.header.subject}</p>
-          <p>نمره کل: {exam.totalScore}</p>
-
-          <div className="mt-2">
-            {exam.questions.map((q, i) => (
-              <div key={q.id}>
+          <div style={{ marginTop: 8 }}>
+            {exam.questions?.map((q, i) => (
+              <div key={q.id || i}>
                 {i + 1}) {q.text} ({q.score})
               </div>
             ))}
           </div>
 
-          <div className="flex gap-2 mt-3">
-
+          {onSelect && (
             <button
-              onClick={() => exportPDF(exam)}
-              className="bg-red-500 text-white px-3 py-1"
+              onClick={() => onSelect(exam)}
+              style={{ marginTop: 12 }}
             >
-              PDF
+              باز کردن
             </button>
-
-            <button
-              onClick={() => exportWord(exam)}
-              className="bg-blue-500 text-white px-3 py-1"
-            >
-              Word
-            </button>
-
-          </div>
-
+          )}
         </div>
       ))}
-
     </div>
   );
 };
