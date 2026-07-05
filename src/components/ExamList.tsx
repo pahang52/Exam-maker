@@ -8,30 +8,41 @@ interface Props {
   onRefresh: () => void;
 }
 
-const ExamList: React.FC<Props> = ({ exams, onEdit }) => {
-  if (!exams.length) {
-    return <div className="text-center text-gray-500">آزمایشی وجود ندارد</div>;
+const ExamList: React.FC<Props> = ({ exams, onEdit, onRefresh }) => {
+  if (!exams || exams.length === 0) {
+    return (
+      <div className="text-center text-gray-500 mt-10">
+        هیچ آزمونی ساخته نشده است
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
-
-      {exams.map((exam, i) => {
-        const id = `exam-${i}`;
+    <div className="space-y-6">
+      {exams.map((exam, index) => {
+        const containerId = `exam-${index}`;
 
         return (
-          <div key={i} className="bg-white p-4 rounded shadow">
+          <div key={index} className="bg-white border rounded-xl p-4 shadow">
 
-            <div className="flex justify-between mb-2">
+            {/* HEADER */}
+            <div className="flex justify-between mb-3">
               <div>
-                <b>{exam.header.examTitle || "آزمون"}</b>
-                <p className="text-sm text-gray-500">{exam.header.subject}</p>
+                <h2 className="font-bold">
+                  {exam.header?.examTitle || "آزمون"}
+                </h2>
+                <p className="text-sm text-gray-500">
+                  {exam.header?.subject || "-"}
+                </p>
               </div>
 
-              <div>نمره: {exam.totalScore}</div>
+              <div className="text-sm">
+                {exam.totalScore} نمره
+              </div>
             </div>
 
-            <div id={id} className="bg-gray-50 p-3 rounded">
+            {/* CONTENT */}
+            <div id={containerId} className="bg-gray-50 p-3 rounded">
               {exam.questions.map((q, i) => (
                 <div key={q.id} className="border-b py-1 text-sm">
                   {i + 1}) {q.text} ({q.score})
@@ -39,10 +50,11 @@ const ExamList: React.FC<Props> = ({ exams, onEdit }) => {
               ))}
             </div>
 
+            {/* ACTIONS */}
             <div className="flex gap-2 mt-3">
 
               <button
-                onClick={() => exportPDF(id)}
+                onClick={() => exportPDF(containerId)}
                 className="bg-red-500 text-white px-3 py-1 rounded"
               >
                 PDF
@@ -57,17 +69,22 @@ const ExamList: React.FC<Props> = ({ exams, onEdit }) => {
 
               <button
                 onClick={() => onEdit(exam)}
-                className="bg-gray-500 text-white px-3 py-1 rounded"
+                className="bg-green-600 text-white px-3 py-1 rounded"
               >
                 ویرایش
               </button>
 
-            </div>
+              <button
+                onClick={onRefresh}
+                className="bg-gray-600 text-white px-3 py-1 rounded"
+              >
+                بروزرسانی
+              </button>
 
+            </div>
           </div>
         );
       })}
-
     </div>
   );
 };
