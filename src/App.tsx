@@ -1,58 +1,35 @@
 import React, { useEffect, useState } from "react";
-import HeaderForm from "./components/HeaderForm";
-import QuestionSection from "./components/QuestionSection";
-import ExamList from "./components/ExamList";
-import { getAllExams, saveExam } from "./utils/storage";
-import { v4 as uuidv4 } from "uuid";
+import { exportPDF, exportWord, printExam } from "./utils/export";
 
 export default function App() {
-  const [header, setHeader] = useState<any>({});
-  const [questions, setQuestions] = useState<any[]>([]);
-  const [exams, setExams] = useState<any[]>([]);
-  const [examId] = useState(uuidv4());
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     console.log("APP LOADED");
-    setExams(getAllExams());
+    setLoaded(true);
   }, []);
 
-  const addExam = () => {
-    const exam = {
-      id: examId,
-      header,
-      questions,
-      totalScore: questions.reduce((a, b) => a + (b.score || 1), 0),
-    };
-
-    saveExam(exam);
-    setExams(getAllExams());
-  };
+  if (!loaded) return <div>Loading...</div>;
 
   return (
-    <div style={{ padding: 10 }}>
-
-      <h2>Exam Maker</h2>
-
-      <HeaderForm header={header} onChange={setHeader} />
-
-      <QuestionSection
-        questions={questions}
-        onAdd={(q: any) => setQuestions([...questions, q])}
-      />
-
-      <button onClick={addExam}>
-        ذخیره آزمون
-      </button>
+    <div style={{ padding: 20 }}>
+      <h1>Exam App</h1>
 
       <div id="exam-container">
-        {questions.map((q, i) => (
-          <div key={i}>
-            {i + 1}) {q.text}
-          </div>
-        ))}
+        <p>نمونه سوال</p>
       </div>
 
-      <ExamList exams={exams} />
+      <button onClick={() => exportPDF("exam-container")}>
+        دانلود PDF
+      </button>
+
+      <button onClick={() => exportWord({ questions: [{ text: "سوال 1" }] })}>
+        دانلود Word
+      </button>
+
+      <button onClick={() => printExam("exam-container")}>
+        چاپ
+      </button>
     </div>
   );
 }
