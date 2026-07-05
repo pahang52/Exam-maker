@@ -1,154 +1,78 @@
-import React, { useEffect, useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import React, { useEffect, useState } from "react";
+import HeaderForm from "./components/HeaderForm";
+import QuestionSection from "./components/QuestionSection";
+import ExamList from "./components/ExamList";
+import { saveExam, getAllExams } from "./utils/storage";
+import { exportPDF, exportWord } from "./utils/export";
+import { v4 as uuidv4 } from "uuid";
 
-import {
-  Question,
-  HeaderInfo,
-  ExamData,
-} from './types';
-
-import { saveExam, getAllExams } from './utils/storage';
-import { exportPDF, exportWord } from './utils/export';
-
-import HeaderForm from './components/HeaderForm';
-import QuestionSection from './components/QuestionSection';
-import ExamList from './components/ExamList';
-
-const defaultHeader: HeaderInfo = {
-  schoolName: '',
-  studentName: '',
-  fatherName: '',
-  subject: '',
-  grade: '',
-  academicYear: '',
-  date: '',
-  teacherName: '',
-  examTitle: '',
-};
-
-type Tab = 'designer' | 'saved';
-
-const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<Tab>('designer');
-  const [header, setHeader] = useState<HeaderInfo>(defaultHeader);
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [examId, setExamId] = useState<string>(uuidv4());
-  const [savedExams, setSavedExams] = useState<ExamData[]>([]);
-  const [notification, setNotification] = useState<string | null>(null);
+export default function App() {
+  const [header, setHeader] = useState<any>({});
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [exams, setExams] = useState<any[]>([]);
+  const [examId] = useState(uuidv4());
 
   useEffect(() => {
-    setSavedExams(getAllExams());
+    console.log("APP LOADED");
+    setExams(getAllExams());
   }, []);
 
-  const totalScore = questions.reduce((sum, q) => sum + (q.score || 0), 0);
-
-  const getExamData = (): ExamData => ({
-    id: examId,
-    header,
-    questions,
-    totalScore,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
-
-  const showNotification = (message: string) => {
-    setNotification(message);
-    setTimeout(() => setNotification(null), 2500);
-  };
-
-  const handleSave = () => {
-    if (!questions.length) {
-      alert('سوالی وجود ندارد');
-      return;
-    }
-
-    saveExam(getExamData());
-    setSavedExams(getAllExams());
-    showNotification('ذخیره شد');
-  };
-
-  const handlePDF = async () => {
+  const safeExportPDF = async () => {
     try {
-      await exportPDF(getExamData());
-      showNotification('PDF ساخته شد');
+      await exportPDF("exam-container");
     } catch (e) {
       console.log(e);
-      alert('خطا در PDF');
+      alert("خطا در PDF");
     }
   };
 
-  const handleWord = async () => {
+  const safeExportWord = async () => {
     try {
-      await exportWord(getExamData());
-      showNotification('Word ساخته شد');
+      await exportWord({
+        header,
+        questions,
+        id: examId,
+      } as any);
     } catch (e) {
       console.log(e);
-      alert('خطا در Word');
+      alert("خطا در Word");
     }
-  };
-
-  const handleNewExam = () => {
-    setExamId(uuidv4());
-    setHeader(defaultHeader);
-    setQuestions([]);
-    setActiveTab('designer');
-    showNotification('آزمون جدید ساخته شد');
   };
 
   return (
-    <div style={{ direction: 'rtl', padding: 16 }}>
+    <div style={{ padding: 10 }}>
+
+      <h2>Exam Maker</h2>
+
       <HeaderForm header={header} onChange={setHeader} />
 
-      <div style={{ display: 'flex', gap: 8, margin: '16px 0', flexWrap: 'wrap' }}>
-        <button type="button" onClick={() => setActiveTab('designer')}>طراحی</button>
-        <button type="button" onClick={() => setActiveTab('saved')}>ذخیره‌شده‌ها</button>
-        <button type="button" onClick={handleNewExam}>آزمون جدید</button>
+      <QuestionSection
+        type="multiple-choice"
+        questions={questions}
+        onAdd={(q: any) => setQuestions([...questions, q])}
+        onUpdate={() => {}}
+        onDelete={() => {}}
+        allQuestionsCount={questions.length}
+        startIndex={1}
+        icon=""
+        bgColor=""
+        borderColor=""
+      />
+
+      <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+        <button onClick={safeExportPDF}>PDF</button>
+        <button onClick={safeExportWord}>Word</button>
       </div>
 
-      {notification && (
-        <div style={{ marginBottom: 16, color: 'green' }}>
-          {notification}
-        </div>
-      )}
-
-      {activeTab === 'designer' ? (
-        <>
-          <QuestionSection
-            type="true-false"
-            questions={questions.filter(q => q.type === 'true-false')}
-            allQuestionsCount={questions.length}
-            startIndex={1}
-            onAdd={(q) => setQuestions(prev => [...prev, q])}
-            onUpdate={(q) => setQuestions(prev => prev.map(p => (p.id === q.id ? q : p)))}
-            onDelete={(id) => setQuestions(prev => prev.filter(p => p.id !== id))}
-            icon="✓✗"
-            bgColor="bg-green-50"
-            borderColor="border-green-200"
-          />
-
-          <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-            <button type="button" onClick={handleSave}>ذخیره</button>
-            <button type="button" onClick={handlePDF}>PDF</button>
-            <button type="button" onClick={handleWord}>Word</button>
+      <div id="exam-container" style={{ marginTop: 20 }}>
+        {questions.map((q, i) => (
+          <div key={i}>
+            {i + 1}. {q.text}
           </div>
+        ))}
+      </div>
 
-          <div style={{ marginTop: 16 }}>
-            <strong>مجموع نمره:</strong> {totalScore}
-          </div>
-        </>
-      ) : (
-        <ExamList
-          exams={savedExams}
-          onSelect={(exam) => {
-            setExamId(exam.id);
-            setHeader(exam.header);
-            setQuestions(exam.questions);
-            setActiveTab('designer');
-          }}
-        />
-      )}
+      <ExamList exams={exams} />
     </div>
   );
-};
-
-export default App;
+}
