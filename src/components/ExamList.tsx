@@ -5,88 +5,38 @@ import { exportPDF, exportWord } from "../utils/export";
 interface Props {
   exams: ExamData[];
   onEdit: (exam: ExamData) => void;
-  onRefresh: () => void;
 }
 
-const ExamList: React.FC<Props> = ({ exams, onEdit, onRefresh }) => {
-  if (!exams || exams.length === 0) {
-    return (
-      <div className="text-center text-gray-500 mt-10">
-        هیچ آزمونی ساخته نشده است
-      </div>
-    );
-  }
+export default function ExamList({ exams, onEdit }: Props) {
+  if (!exams.length) return <div>هیچ آزمونی نیست</div>;
 
   return (
-    <div className="space-y-6">
-      {exams.map((exam, index) => {
-        const containerId = `exam-${index}`;
+    <div className="p-4 space-y-4">
+      {exams.map((exam, i) => {
+        const id = `exam-${i}`;
 
         return (
-          <div key={index} className="bg-white border rounded-xl p-4 shadow">
+          <div key={i} className="bg-white p-3 rounded shadow">
 
-            {/* HEADER */}
-            <div className="flex justify-between mb-3">
-              <div>
-                <h2 className="font-bold">
-                  {exam.header?.examTitle || "آزمون"}
-                </h2>
-                <p className="text-sm text-gray-500">
-                  {exam.header?.subject || "-"}
-                </p>
-              </div>
+            <div id={id}>
+              <h3>{exam.header.examTitle}</h3>
 
-              <div className="text-sm">
-                {exam.totalScore} نمره
-              </div>
-            </div>
-
-            {/* CONTENT */}
-            <div id={containerId} className="bg-gray-50 p-3 rounded">
-              {exam.questions.map((q, i) => (
-                <div key={q.id} className="border-b py-1 text-sm">
-                  {i + 1}) {q.text} ({q.score})
+              {exam.questions.map((q, idx) => (
+                <div key={q.id}>
+                  {idx + 1}) {q.text}
                 </div>
               ))}
             </div>
 
-            {/* ACTIONS */}
             <div className="flex gap-2 mt-3">
-
-              <button
-                onClick={() => exportPDF(containerId)}
-                className="bg-red-500 text-white px-3 py-1 rounded"
-              >
-                PDF
-              </button>
-
-              <button
-                onClick={() => exportWord(exam)}
-                className="bg-blue-500 text-white px-3 py-1 rounded"
-              >
-                Word
-              </button>
-
-              <button
-                onClick={() => onEdit(exam)}
-                className="bg-green-600 text-white px-3 py-1 rounded"
-              >
-                ویرایش
-              </button>
-
-              <button
-                onClick={onRefresh}
-                className="bg-gray-600 text-white px-3 py-1 rounded"
-              >
-                بروزرسانی
-              </button>
-
+              <button onClick={() => exportPDF(id)}>PDF</button>
+              <button onClick={() => exportWord(exam)}>Word</button>
+              <button onClick={() => onEdit(exam)}>ویرایش</button>
             </div>
+
           </div>
         );
       })}
     </div>
   );
-};
-
-export default ExamList;
+}
